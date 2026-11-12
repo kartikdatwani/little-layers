@@ -21,6 +21,7 @@ An iOS 17+ SwiftUI starter app that turns today's local forecast into an outfit 
 - Rain, new snowfall, forecast ground snow, and a manual ground-snow toggle.
 - Loading, location-denied, network-error, and missing-weather states.
 - Refresh button and automatic refresh when returning after 15 minutes.
+- Black, white, and cream visual theme, with a brief falling-snow animation when ground snow is enabled.
 
 ## Recommendation rules
 
