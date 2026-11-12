@@ -105,7 +105,7 @@ struct ContentView: View {
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button("Refresh", systemImage: "arrow.clockwise") { weather.refresh() }.disabled(weather.loading)
-                    Button("Settings", systemImage: "bell") { showingSettings = true }
+                    Button("Settings", systemImage: "gearshape") { showingSettings = true }
                 }
             }
             .sheet(isPresented: $showingSettings) { notificationSettings }
