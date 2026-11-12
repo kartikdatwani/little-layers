@@ -81,7 +81,7 @@ struct Outfit {
         var extras: [String] = []
         if adjusted < 7 { extras.append("Warm hat & gloves") }
         if wet { extras.append("Waterproof outer layer") }
-        if high - low >= 6 { extras.append("Pack a removable layer for the warmer afternoon") }
+        if high - low >= 6 { extras.append("Wear a removable layer in the morning; take it off if the afternoon warms up") }
         if high >= 24 { extras.append("Sun hat & water bottle") }
         if extras.isEmpty { extras.append("Regular socks") }
         var reason = "Uses the coldest feels-like temperature during your selected hours."
