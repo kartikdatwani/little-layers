@@ -8,7 +8,7 @@ An iOS 17+ SwiftUI starter app that turns today's local forecast into an outfit 
 2. Complete Xcode's license and first-launch setup if prompted.
 3. Select the LittleLayers scheme and an iPhone simulator, then Run. Set a simulated location through the simulator's Features → Location menu.
 4. For a physical iPhone, choose your signing team under Signing & Capabilities and a unique bundle identifier.
-5. Choose today's start and end hours and tap Get today's outfit. Allow location access when prompted.
+5. Open Settings to choose the outdoor hours and manage child profiles or notifications. Return to the main screen and tap Get today's outfit. Allow location access when prompted.
 
 ## Included
 
@@ -25,7 +25,7 @@ An iOS 17+ SwiftUI starter app that turns today's local forecast into an outfit 
 
 ## Recommendation rules
 
-Use the minimum hourly feels-like temperature over the selected inclusive hour range. For children age 4 or younger, subtract 2°C for clothing selection; subtract another 3°C for a child who runs cold. Gender is collected as a profile detail and does not alter temperature advice. Defaults are editable in `Outfit.swift`:
+Use the minimum hourly feels-like temperature over the selected inclusive hour range. For children age 4 or younger, subtract 2°C for clothing selection; subtract another 3°C for a child who runs cold. Defaults are editable in `Outfit.swift`:
 
 | Feels like | Clothing |
 |---|---|
@@ -35,7 +35,7 @@ Use the minimum hourly feels-like temperature over the selected inclusive hour r
 | 13–18°C | T-shirt, hoodie |
 | 19°C and above | Light, breathable clothes |
 
-Precipitation probability of at least 40% adds waterproof gear. Any forecast snowfall, forecast snow depth of at least 1 cm, or the manual toggle selects insulated waterproof boots. A range of at least 6°C adds a removable-layer reminder. These are customizable everyday heuristics, not validated pediatric guidance or extreme-weather alerts; the app does not tailor advice for infants.
+Precipitation probability of at least 40% adds waterproof gear. Any forecast snowfall, forecast snow depth of at least 1 cm, or the manual toggle selects insulated waterproof boots. A range of at least 6°C recommends wearing a removable morning layer that can be taken off if the afternoon warms up. Turning on the manual ground-snow toggle also plays a brief falling-snow animation. These are customizable everyday heuristics, not validated pediatric guidance or extreme-weather alerts; the app does not tailor advice for infants.
 
 ## Weather and privacy
 
