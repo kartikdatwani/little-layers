@@ -15,7 +15,6 @@ struct ContentView: View {
     @State private var end = 16
     @State private var groundSnow = false
     @State private var newName = ""
-    @State private var editing = false
     private let ink = Color(red: 0.15, green: 0.28, blue: 0.25)
     private var notificationScheduleToken: String {
         let childData = (try? JSONEncoder().encode(children).base64EncodedString()) ?? ""
@@ -32,21 +31,8 @@ struct ContentView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("A little less morning guesswork.").font(.title2.bold())
-                        Text("Today’s outfits, ready to go.").foregroundStyle(.secondary)
-                    }
                     VStack(alignment: .leading, spacing: 14) {
-                        Label("OUT & ABOUT TODAY", systemImage: "clock").font(.caption.bold())
-                        HStack {
-                            Picker("From", selection: $start) {
-                                ForEach(0..<23, id: \.self) { Text(hourLabel($0)).tag($0) }
-                            }.accessibilityLabel("Start hour")
-                            Text("to").foregroundStyle(.secondary)
-                            Picker("Until", selection: $end) {
-                                ForEach((start + 1)...23, id: \.self) { Text(hourLabel($0)).tag($0) }
-                            }.accessibilityLabel("End hour")
-                        }
+                        Label("TODAY’S CONDITIONS", systemImage: "cloud.sun.fill").font(.caption.bold())
                         Toggle("Snow already on the ground", isOn: $groundSnow)
                             .font(.subheadline)
                     }.card()
@@ -97,7 +83,7 @@ struct ContentView: View {
                         Text("No forecast data is available for these hours. Try another time window or refresh.").card()
                     } else {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Choose today’s hours, then check the weather.")
+                            Text("Check the local forecast for today’s outfits.")
                             Text("Your approximate location is sent to Open-Meteo to get the forecast. Children’s names stay on this device.").font(.caption).foregroundStyle(.secondary)
                             Button("Get today’s outfit") { weather.refresh() }.buttonStyle(.borderedProminent)
                         }.card()
@@ -117,11 +103,9 @@ struct ContentView: View {
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button("Refresh", systemImage: "arrow.clockwise") { weather.refresh() }.disabled(weather.loading)
-                    Button("Children", systemImage: "person.2") { editing = true }
                     Button("Settings", systemImage: "bell") { showingSettings = true }
                 }
             }
-            .sheet(isPresented: $editing) { childrenEditor }
             .sheet(isPresented: $showingSettings) { notificationSettings }
             .alert("Notifications", isPresented: Binding(get: { notificationMessage != nil }, set: { if !$0 { notificationMessage = nil } })) {
                 Button("OK", role: .cancel) { notificationMessage = nil }
@@ -152,9 +136,24 @@ struct ContentView: View {
         }.tint(ink).preferredColorScheme(.light)
     }
 
-    private var childrenEditor: some View {
+    private var notificationSettings: some View {
         NavigationStack {
             Form {
+                Section("Time outside") {
+                    Picker("From", selection: $start) {
+                        ForEach(0..<23, id: \.self) { Text(hourLabel($0)).tag($0) }
+                    }
+                    Picker("Until", selection: $end) {
+                        ForEach((start + 1)...23, id: \.self) { Text(hourLabel($0)).tag($0) }
+                    }
+                }
+                Section {
+                    Toggle("Daily outfit reminder", isOn: $notificationsEnabled)
+                    DatePicker("Notification time", selection: notificationTimeBinding, displayedComponents: .hourAndMinute)
+                        .disabled(!notificationsEnabled)
+                } footer: {
+                    Text("Default time is 6:00 AM. Reminders use the latest forecast loaded in the app and your selected outdoor hours. Open the app to refresh upcoming forecasts.")
+                }
                 Section("Your children") {
                     ForEach($children) { $child in
                         VStack(alignment: .leading) {
@@ -166,7 +165,7 @@ struct ContentView: View {
                         }
                     }.onDelete { offsets in children.remove(atOffsets: offsets) }
                 }
-                Section {
+                Section("Add a child") {
                     TextField("Child’s name", text: $newName)
                     Picker("Age", selection: $newAge) {
                         ForEach(1...18, id: \.self) { age in Text("\(age) years").tag(age) }
@@ -177,31 +176,12 @@ struct ContentView: View {
                     }.disabled(newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
                 Section { Text("Names, ages, and comfort preferences are saved only on this device.") }
-            }.navigationTitle("Your crew")
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { editing = false } } }
+            }.navigationTitle("Settings")
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showingSettings = false } } }
         }
     }
 
     @State private var newAge = 6
-
-    private var notificationSettings: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    Toggle("Daily outfit reminder", isOn: $notificationsEnabled)
-                    DatePicker("Notification time", selection: notificationTimeBinding, displayedComponents: .hourAndMinute)
-                        .disabled(!notificationsEnabled)
-                } footer: {
-                    Text("Default time is 6:00 AM. Reminders use the latest forecast loaded in the app and your selected outdoor hours. Open the app to refresh upcoming forecasts.")
-                }
-                Section {
-                    Text("Turn on notifications in iPhone Settings if you previously denied permission.")
-                }
-            }
-            .navigationTitle("Notifications")
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showingSettings = false } } }
-        }
-    }
 
     private var notificationTimeBinding: Binding<Date> {
         Binding(get: {
