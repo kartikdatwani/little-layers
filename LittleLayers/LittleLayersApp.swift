@@ -15,7 +15,8 @@ struct ContentView: View {
     @State private var end = 16
     @State private var groundSnow = false
     @State private var newName = ""
-    private let ink = Color(red: 0.15, green: 0.28, blue: 0.25)
+    private let ink = Color.black
+    private let cream = Color(red: 0.975, green: 0.965, blue: 0.935)
     private var notificationScheduleToken: String {
         let childData = (try? JSONEncoder().encode(children).base64EncodedString()) ?? ""
         return "\(childData)-\(start)-\(end)-\(groundSnow)-\(notificationHour)-\(notificationMinute)-\(notificationsEnabled)-\(weather.updated?.timeIntervalSince1970 ?? 0)"
@@ -25,6 +26,7 @@ struct ContentView: View {
     @AppStorage("notificationMinute") private var notificationMinute = 0
     @State private var showingSettings = false
     @State private var notificationMessage: String?
+    @State private var showSnowConfetti = false
     private var hours: [Hour] { weather.forecast?.hours(from: start, through: end) ?? [] }
 
     var body: some View {
@@ -60,7 +62,7 @@ struct ContentView: View {
                                 Text("Some selected hours are unavailable. Advice uses available hours only.").font(.caption)
                             }
                         }.frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(20).background(ink.opacity(0.09), in: RoundedRectangle(cornerRadius: 24))
+                            .padding(20).background(cream, in: RoundedRectangle(cornerRadius: 24))
                         ForEach(children) { child in
                             if let outfit = Outfit.recommend(hours: hours, age: child.age, runsCold: child.runsCold, groundSnow: groundSnow) {
                                 VStack(alignment: .leading, spacing: 16) {
@@ -95,7 +97,7 @@ struct ContentView: View {
                     }.font(.caption).foregroundStyle(.secondary)
                 }.padding(20)
             }
-            .background(Color(red: 0.97, green: 0.96, blue: 0.93))
+            .background(cream)
             .navigationTitle("Little Layers")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -116,6 +118,14 @@ struct ContentView: View {
             .onChange(of: children) { _, value in childrenData = (try? JSONEncoder().encode(value)) ?? Data() }
             .onChange(of: start) { _, value in if end <= value { end = value + 1 } }
             .onChange(of: notificationScheduleToken) { _, _ in scheduleOutfitNotifications() }
+            .onChange(of: groundSnow) { _, enabled in
+                guard enabled else { return }
+                showSnowConfetti = true
+                Task {
+                    try? await Task.sleep(for: .seconds(2.8))
+                    showSnowConfetti = false
+                }
+            }
             .onChange(of: notificationsEnabled) { _, enabled in
                 Task {
                     if enabled {
@@ -133,7 +143,13 @@ struct ContentView: View {
                     weather.refresh()
                 }
             }
-        }.tint(ink).preferredColorScheme(.light)
+        }
+        .overlay {
+            if showSnowConfetti {
+                SnowConfetti().allowsHitTesting(false).transition(.opacity)
+            }
+        }
+        .tint(ink).preferredColorScheme(.light)
     }
 
     private var notificationSettings: some View {
@@ -216,5 +232,28 @@ private extension View {
     func card() -> some View {
         self.frame(maxWidth: .infinity, alignment: .leading).padding(18)
             .background(.white, in: RoundedRectangle(cornerRadius: 22))
+    }
+}
+
+private struct SnowConfetti: View {
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: false)) { timeline in
+            Canvas { context, size in
+                let time = timeline.date.timeIntervalSinceReferenceDate
+                for index in 0..<76 {
+                    let seed = Double(index) * 1.618
+                    let progress = (time * 0.42 + seed / 76).truncatingRemainder(dividingBy: 1)
+                    let drift = sin(time * 1.2 + seed) * 24
+                    let x = (seed * 83 + drift).truncatingRemainder(dividingBy: max(size.width, 1))
+                    let y = progress * size.height
+                    let diameter = 3 + (Double(index % 4) * 1.4)
+                    let flake = Path(ellipseIn: CGRect(x: x, y: y, width: diameter, height: diameter))
+                    context.fill(flake, with: .color(.white.opacity(0.92)))
+                    context.stroke(flake, with: .color(.black.opacity(0.14)), lineWidth: 0.6)
+                }
+            }
+        }
+        .ignoresSafeArea()
+        .accessibilityHidden(true)
     }
 }
