@@ -13,6 +13,7 @@ An iOS 17+ SwiftUI starter app that turns today's local forecast into an outfit 
 ## Included
 
 - Daily hour selection, with a default 8 am–4 pm starting window; hours are not saved across app launches.
+- Settings groups the outdoor time window, notification preferences, and child profiles.
 - Multiple child profiles with editable names, age, and an optional runs-cold preference saved on device.
 - Optional daily outfit notifications, scheduled for 6:00 am by default; the time is configurable.
 - Fahrenheit/Celsius display.
