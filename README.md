@@ -22,6 +22,7 @@ An iOS 17+ SwiftUI starter app that turns today's local forecast into an outfit 
 - Loading, location-denied, network-error, and missing-weather states.
 - Refresh button and automatic refresh when returning after 15 minutes.
 - Black, white, and cream visual theme, with a brief falling-snow animation when ground snow is enabled.
+- Minimal jacket app icon in the black-and-cream palette.
 
 ## Recommendation rules
 
@@ -48,4 +49,4 @@ Review Open-Meteo's current licensing and commercial usage terms before distribu
 
 ## Verification status
 
-The Xcode project passed `plutil -lint` and built successfully for the iOS Simulator using Xcode 26.3 after the notification and profile changes. Simulator services reported a stale service version during the build, so the app was compiled but not launched in a simulator. No app icon or distribution signing is configured.
+The app icon asset is a 1024×1024 PNG in the Xcode asset catalog. Simulator services reported that no simulator runtimes are available in this Xcode environment; the icon asset could not be validated in a simulator build. No distribution signing is configured.
