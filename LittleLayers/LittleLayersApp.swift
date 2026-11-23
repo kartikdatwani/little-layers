@@ -2,6 +2,8 @@ import SwiftUI
 
 @main
 struct LittleLayersApp: App {
+    @UIApplicationDelegateAdaptor(LittleLayersAppDelegate.self) private var appDelegate
+
     var body: some Scene { WindowGroup { ContentView() } }
 }
 
@@ -27,77 +29,95 @@ struct ContentView: View {
     @State private var showingSettings = false
     @State private var notificationMessage: String?
     @State private var showSnowConfetti = false
+    @State private var notificationRouteActive = false
     private var hours: [Hour] { weather.forecast?.hours(from: start, through: end) ?? [] }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    VStack(alignment: .leading, spacing: 14) {
-                        Label("TODAY’S CONDITIONS", systemImage: "cloud.sun.fill").font(.caption.bold())
-                        Toggle("Snow already on the ground", isOn: $groundSnow)
-                            .font(.subheadline)
-                    }.card()
-
-                    if weather.loading {
-                        HStack { ProgressView(); Text("Checking your local forecast…") }.card()
-                    } else if let message = weather.message {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text(message)
-                            Button("Try again") { weather.refresh() }.buttonStyle(.borderedProminent)
-                            if let url = URL(string: UIApplication.openSettingsURLString) {
-                                Link("Open Settings", destination: url)
-                            }
-                        }.card()
-                    } else if let low = hours.map(\.feels).min(), let high = hours.map(\.feels).max() {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Label("YOUR LOCAL FORECAST", systemImage: "cloud.sun.fill").font(.caption.bold())
-                            Text("\(temperature(low)) → \(temperature(high))").font(.system(size: 36, weight: .semibold, design: .rounded))
-                            Text("Feels-like range · \(hourLabel(start))–\(hourLabel(end))")
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 22) {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Label("TODAY’S CONDITIONS", systemImage: "cloud.sun.fill").font(.caption.bold())
+                            Toggle("Snow already on the ground", isOn: $groundSnow)
                                 .font(.subheadline)
-                            if let probability = hours.compactMap(\.rain).max() {
-                                Text("\(Int(probability))% peak precipitation chance").font(.subheadline)
-                            }
-                            if hours.count < end - start + 1 {
-                                Text("Some selected hours are unavailable. Advice uses available hours only.").font(.caption)
-                            }
-                        }.frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(20).background(cream, in: RoundedRectangle(cornerRadius: 24))
-                        ForEach(children) { child in
-                            if let outfit = Outfit.recommend(hours: hours, age: child.age, runsCold: child.runsCold, groundSnow: groundSnow) {
-                                VStack(alignment: .leading, spacing: 16) {
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(child.name).font(.title2.bold())
-                                            Text("Age \(child.age)").font(.caption).foregroundStyle(.secondary)
-                                        }
-                                        Spacer()
-                                        if child.runsCold { Text("Runs cold").font(.caption).foregroundStyle(.secondary) }
-                                    }
-                                    outfitRow("Layers", outfit.layers, "tshirt.fill")
-                                    outfitRow("Shoes", outfit.shoes, "shoeprints.fill")
-                                    outfitRow("Bring along", outfit.extras, "backpack.fill")
-                                    Text(outfit.reason).font(.caption).foregroundStyle(.secondary)
-                                }.card()
-                            }
-                        }
-                    } else if weather.forecast != nil {
-                        Text("No forecast data is available for these hours. Try another time window or refresh.").card()
-                    } else {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Check the local forecast for today’s outfits.")
-                            Text("Your approximate location is sent to Open-Meteo to get the forecast. Children’s names stay on this device.").font(.caption).foregroundStyle(.secondary)
-                            Button("Get today’s outfit") { weather.refresh() }.buttonStyle(.borderedProminent)
                         }.card()
-                    }
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("A starting point for everyday outdoor clothing. Adjust for activity, comfort, and local conditions.")
-                        if let updated = weather.updated { Text("Updated \(updated.formatted(date: .omitted, time: .shortened))") }
-                        Link("Weather data by Open-Meteo", destination: URL(string: "https://open-meteo.com/")!)
-                    }.font(.caption).foregroundStyle(.secondary)
-                }.padding(20)
+
+                        if weather.loading {
+                            HStack { ProgressView(); Text("Checking your local forecast…") }.card()
+                        } else if let message = weather.message {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text(message)
+                                Button("Try again") { weather.refresh() }.buttonStyle(.borderedProminent)
+                                if let url = URL(string: UIApplication.openSettingsURLString) {
+                                    Link("Open Settings", destination: url)
+                                }
+                            }.card()
+                        } else if let low = hours.map(\.feels).min(), let high = hours.map(\.feels).max() {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Label("YOUR LOCAL FORECAST", systemImage: "cloud.sun.fill").font(.caption.bold())
+                                Text("\(temperature(low)) → \(temperature(high))").font(.system(size: 36, weight: .semibold, design: .rounded))
+                                Text("Feels-like range · \(hourLabel(start))–\(hourLabel(end))")
+                                    .font(.subheadline)
+                                if let probability = hours.compactMap(\.rain).max() {
+                                    Text("\(Int(probability))% peak precipitation chance").font(.subheadline)
+                                }
+                                if hours.count < end - start + 1 {
+                                    Text("Some selected hours are unavailable. Advice uses available hours only.").font(.caption)
+                                }
+                            }.frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(20).background(cream, in: RoundedRectangle(cornerRadius: 24))
+                                .id("today-outfit-result")
+                            ForEach(children) { child in
+                                if let outfit = Outfit.recommend(hours: hours, age: child.age, runsCold: child.runsCold, groundSnow: groundSnow) {
+                                    VStack(alignment: .leading, spacing: 16) {
+                                        HStack {
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(child.name).font(.title2.bold())
+                                                Text("Age \(child.age)").font(.caption).foregroundStyle(.secondary)
+                                            }
+                                            Spacer()
+                                            if child.runsCold { Text("Runs cold").font(.caption).foregroundStyle(.secondary) }
+                                        }
+                                        outfitRow("Layers", outfit.layers, "tshirt.fill")
+                                        outfitRow("Shoes", outfit.shoes, "shoeprints.fill")
+                                        outfitRow("Bring along", outfit.extras, "backpack.fill")
+                                        Text(outfit.reason).font(.caption).foregroundStyle(.secondary)
+                                    }.card()
+                                }
+                            }
+                        } else if weather.forecast != nil {
+                            Text("No forecast data is available for these hours. Try another time window or refresh.").card()
+                        } else {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Check the local forecast for today’s outfits.")
+                                Text("Your approximate location is sent to Open-Meteo to get the forecast. Children’s names stay on this device.").font(.caption).foregroundStyle(.secondary)
+                                Button("Get today’s outfit") { weather.refresh() }.buttonStyle(.borderedProminent)
+                            }.card()
+                        }
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("A starting point for everyday outdoor clothing. Adjust for activity, comfort, and local conditions.")
+                            if let updated = weather.updated { Text("Updated \(updated.formatted(date: .omitted, time: .shortened))") }
+                            Link("Weather data by Open-Meteo", destination: URL(string: "https://open-meteo.com/")!)
+                        }.font(.caption).foregroundStyle(.secondary)
+                    }.padding(20).id("today-outfit-screen")
+                }
+                .background(cream)
+                .onReceive(NotificationCenter.default.publisher(for: .openTodayOutfitFromNotification)) { _ in
+                    openTodayOutfitFromNotification(using: proxy)
+                }
+                .onAppear {
+                    openTodayOutfitFromNotification(using: proxy)
+                }
+                .onChange(of: weather.updated) { _, updated in
+                    guard updated != nil, notificationRouteActive else { return }
+                    notificationRouteActive = false
+                    withAnimation { proxy.scrollTo("today-outfit-result", anchor: .top) }
+                }
+                .onChange(of: weather.message) { _, message in
+                    if message != nil { notificationRouteActive = false }
+                }
             }
-            .background(cream)
             .navigationTitle("Little Layers")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -213,6 +233,16 @@ struct ContentView: View {
         guard notificationsEnabled, let forecast = weather.forecast, !children.isEmpty else { return }
         OutfitNotifications.schedule(forecast: forecast, children: children, start: start, end: end,
                                      hour: notificationHour, minute: notificationMinute, groundSnow: groundSnow)
+    }
+
+    private func openTodayOutfitFromNotification(using proxy: ScrollViewProxy) {
+        let key = LittleLayersAppDelegate.pendingOutfitRouteKey
+        guard UserDefaults.standard.bool(forKey: key) else { return }
+        UserDefaults.standard.set(false, forKey: key)
+        showingSettings = false
+        notificationRouteActive = true
+        withAnimation { proxy.scrollTo("today-outfit-screen", anchor: .top) }
+        weather.refresh()
     }
 
     private func outfitRow(_ title: String, _ text: String, _ icon: String) -> some View {

@@ -10,6 +10,7 @@ final class WeatherModel: NSObject, ObservableObject, CLLocationManagerDelegate 
     @Published var updated: Date?
     private let manager = CLLocationManager()
     private var task: Task<Void, Never>?
+    private var timeoutTask: Task<Void, Never>?
 
     override init() {
         super.init()
@@ -19,10 +20,16 @@ final class WeatherModel: NSObject, ObservableObject, CLLocationManagerDelegate 
 
     func refresh() {
         task?.cancel()
+        timeoutTask?.cancel()
         forecast = nil
         updated = nil
         message = nil
         loading = true
+        timeoutTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(30))
+            guard !Task.isCancelled, let self, self.loading else { return }
+            self.fail("Getting your forecast is taking longer than expected. Check location and internet access, then try again.")
+        }
         switch manager.authorizationStatus {
         case .notDetermined: manager.requestWhenInUseAuthorization()
         case .authorizedAlways, .authorizedWhenInUse: manager.requestLocation()
@@ -40,10 +47,12 @@ final class WeatherModel: NSObject, ObservableObject, CLLocationManagerDelegate 
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        guard loading else { return }
         fail("Couldn’t find your location. Please try again.")
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard loading else { return }
         guard let location = locations.last else { fail("Location unavailable. Try again."); return }
         task?.cancel()
         task = Task {
@@ -63,6 +72,7 @@ final class WeatherModel: NSObject, ObservableObject, CLLocationManagerDelegate 
                 forecast = result
                 updated = Date()
                 loading = false
+                timeoutTask?.cancel()
             } catch {
                 guard !Task.isCancelled else { return }
                 fail("Couldn’t load today’s forecast. Check your connection and try again.")
@@ -71,6 +81,8 @@ final class WeatherModel: NSObject, ObservableObject, CLLocationManagerDelegate 
     }
 
     private func fail(_ text: String) {
+        task?.cancel()
+        timeoutTask?.cancel()
         forecast = nil
         message = text
         loading = false
