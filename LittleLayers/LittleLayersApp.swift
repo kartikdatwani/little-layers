@@ -17,6 +17,7 @@ struct ContentView: View {
     @State private var end = 16
     @State private var groundSnow = false
     @State private var newName = ""
+    @State private var selectedOutfitDate = Date()
     private let ink = Color.black
     private let cream = Color(red: 0.975, green: 0.965, blue: 0.935)
     private var notificationScheduleToken: String {
@@ -30,7 +31,20 @@ struct ContentView: View {
     @State private var notificationMessage: String?
     @State private var showSnowConfetti = false
     @State private var notificationRouteActive = false
-    private var hours: [Hour] { weather.forecast?.hours(from: start, through: end) ?? [] }
+    private var hours: [Hour] { weather.forecast?.hours(on: selectedOutfitDate, from: start, through: end) ?? [] }
+    private var upcomingOutfitDate: Date {
+        let calendar = Calendar.current
+        let now = Date()
+        let parts = calendar.dateComponents([.hour, .minute], from: now)
+        let isPastEndTime = (parts.hour ?? 0) > end || ((parts.hour ?? 0) == end && (parts.minute ?? 0) > 0)
+        return isPastEndTime ? (calendar.date(byAdding: .day, value: 1, to: now) ?? now) : now
+    }
+    private var outfitDayHeading: String {
+        Calendar.current.isDateInTomorrow(selectedOutfitDate) ? "TOMORROW’S OUTFIT FORECAST" : "TODAY’S OUTFIT FORECAST"
+    }
+    private var upcomingOutfitButtonTitle: String {
+        Calendar.current.isDateInTomorrow(upcomingOutfitDate) ? "Get tomorrow’s outfit" : "Get today’s outfit"
+    }
 
     var body: some View {
         NavigationStack {
@@ -38,7 +52,7 @@ struct ContentView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
                         VStack(alignment: .leading, spacing: 14) {
-                            Label("TODAY’S CONDITIONS", systemImage: "cloud.sun.fill").font(.caption.bold())
+                            Label("CURRENT CONDITIONS", systemImage: "cloud.sun.fill").font(.caption.bold())
                             Toggle("Snow already on the ground", isOn: $groundSnow)
                                 .font(.subheadline)
                         }.card()
@@ -48,14 +62,16 @@ struct ContentView: View {
                         } else if let message = weather.message {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text(message)
-                                Button("Try again") { weather.refresh() }.buttonStyle(.borderedProminent)
+                                Button("Try again") { refreshOutfit() }.buttonStyle(.borderedProminent)
                                 if let url = URL(string: UIApplication.openSettingsURLString) {
                                     Link("Open Settings", destination: url)
                                 }
                             }.card()
                         } else if let low = hours.map(\.feels).min(), let high = hours.map(\.feels).max() {
                             VStack(alignment: .leading, spacing: 10) {
-                                Label("YOUR LOCAL FORECAST", systemImage: "cloud.sun.fill").font(.caption.bold())
+                                Label(outfitDayHeading, systemImage: "cloud.sun.fill").font(.caption.bold())
+                                Text(selectedOutfitDate.formatted(date: .complete, time: .omitted))
+                                    .font(.subheadline).foregroundStyle(.secondary)
                                 Text("\(temperature(low)) → \(temperature(high))").font(.system(size: 36, weight: .semibold, design: .rounded))
                                 Text("Feels-like range · \(hourLabel(start))–\(hourLabel(end))")
                                     .font(.subheadline)
@@ -90,9 +106,9 @@ struct ContentView: View {
                             Text("No forecast data is available for these hours. Try another time window or refresh.").card()
                         } else {
                             VStack(alignment: .leading, spacing: 12) {
-                                Text("Check the local forecast for today’s outfits.")
+                                Text("Check the local forecast for your selected day.")
                                 Text("Your approximate location is sent to Open-Meteo to get the forecast. Children’s names stay on this device.").font(.caption).foregroundStyle(.secondary)
-                                Button("Get today’s outfit") { weather.refresh() }.buttonStyle(.borderedProminent)
+                                Button(upcomingOutfitButtonTitle) { refreshOutfit() }.buttonStyle(.borderedProminent)
                             }.card()
                         }
                         VStack(alignment: .leading, spacing: 8) {
@@ -124,7 +140,7 @@ struct ContentView: View {
                     Button(fahrenheit ? "°F" : "°C") { fahrenheit.toggle() }
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { weather.refresh() }.disabled(weather.loading)
+                    Button("Refresh", systemImage: "arrow.clockwise") { refreshOutfit() }.disabled(weather.loading)
                     Button("Settings", systemImage: "gearshape") { showingSettings = true }
                 }
             }
@@ -160,7 +176,7 @@ struct ContentView: View {
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active, let updated = weather.updated, Date().timeIntervalSince(updated) > 900 {
-                    weather.refresh()
+                    refreshOutfit()
                 }
             }
         }
@@ -242,6 +258,11 @@ struct ContentView: View {
         showingSettings = false
         notificationRouteActive = true
         withAnimation { proxy.scrollTo("today-outfit-screen", anchor: .top) }
+        refreshOutfit()
+    }
+
+    private func refreshOutfit() {
+        selectedOutfitDate = upcomingOutfitDate
         weather.refresh()
     }
 
